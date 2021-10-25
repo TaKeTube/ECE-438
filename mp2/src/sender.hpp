@@ -1,0 +1,85 @@
+#ifndef SENDER_HPP
+#define SENDER_HPP
+
+#include <sys/time.h>
+#include <list>
+#include "utility.h"
+
+#define INIT_SST    256
+
+enum state_t {SLOW_START, FAST_RECOVERY, CONGESTION_AVOIDANCE};
+enum event_t {NEW_ACK, DUP_ACK, TIME_OUT};
+
+typedef struct timestamp {
+    struct timeval tv;
+    int seq_num;
+} timestamp_t;
+
+class SenderBuffer{
+    public:
+        int wait;
+        int size;
+        std::list<packet_t> data;
+        std::list<packet_t>::iterator unsent;
+
+        SenderBuffer();
+        void push(packet_t pkt);
+        void pop();
+        packet_t pop_unsent();
+        // void pop_sent(int ack_num);
+        packet_t &front();
+        bool empty();
+};
+
+SenderBuffer::SenderBuffer(){
+    size = 0;
+    wait = 0;
+    data = std::list<packet_t>();
+    packet_t pkt_holder;
+    pkt_holder.type = HOLDER;
+    data.push_back(pkt_holder);
+    unsent = data.begin();
+}
+
+void SenderBuffer::push(packet_t pkt){
+    data.push_back(pkt);
+    size++;
+};
+
+// packet_t SenderBuffer::pop(){
+//     packet_t pkt = data.front();
+//     data.pop_front();
+//     size--;
+//     wait--;
+//     return pkt;
+// }
+
+void SenderBuffer::pop(){
+    data.pop_front();
+    size--;
+    wait--;
+}
+
+packet_t SenderBuffer::pop_unsent(){
+    packet_t pkt = *unsent++;
+    wait++;
+    return pkt;
+}
+
+// void SenderBuffer::pop_sent(int ack_num){
+//     while(data.front().seq_num <= ack_num){
+//         data.pop_front();
+//         wait--;
+//         size--;
+//     }
+// }
+
+packet_t &SenderBuffer::front(){
+    return data.front();
+}
+
+bool SenderBuffer::empty(){
+    return size <= 1;
+}
+
+#endif

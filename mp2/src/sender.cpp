@@ -20,8 +20,20 @@
 #include <string.h>
 #include <sys/time.h>
 
+#include <list>
+#include <queue>
+#include "sender.hpp"
+
 struct sockaddr_in si_other;
 int s, slen;
+
+state_t tcp_state;
+int cw, sst, dupack;
+
+SenderBuffer send_buf = SenderBuffer();
+std::queue<timestamp_t> time_stamp;
+char[sizeof(packet_t)] pkt_buf;
+
 
 void diep(char *s) {
     perror(s);
@@ -29,8 +41,48 @@ void diep(char *s) {
 }
 
 
+void congestionCtrl(event_t event){
+    switch (tcp_state)
+    {
+    case SLOW_START:
+        if(event == TIME_OUT){
+
+        }else if(event == NEW_ACK){
+
+        }else if(event == DUP_ACK){
+
+        }
+        break;
+    case CONGESTION_AVOIDANCE:
+        if(event == TIME_OUT){
+
+        }else if(event == NEW_ACK){
+
+        }else if(event == DUP_ACK){
+            
+        }
+        break;
+    case FAST_RECOVERY:
+        if(event == TIME_OUT){
+
+        }else if(event == NEW_ACK){
+
+        }else if(event == DUP_ACK){
+            
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+void sendPkt();
+void fullBuf(){
+    
+}
+
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
-    //Open the file
+    /* open the file */
     FILE *fp;
     fp = fopen(filename, "rb");
     if (fp == NULL) {
@@ -38,8 +90,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         exit(1);
     }
 
-	/* Determine how many bytes to transfer */
-
+    /* Initialize the UDP socket */
+    /* Determine how many bytes to transfer */
     slen = sizeof (si_other);
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
@@ -53,18 +105,25 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         exit(1);
     }
 
+    /* Send data and receive acknowledgements on s*/
+    cw = 1;
+    sst = INIT_SST;
+    dupack = 0;
+    tcp_state = SLOW_START;
 
-	/* Send data and receive acknowledgements on s*/
+    fullBuf();
+    while(!send_buf.empty()){
+        
+    }
+
+
+
 
     printf("Closing the socket\n");
     close(s);
     return;
-
 }
 
-/*
- * 
- */
 int main(int argc, char** argv) {
 
     unsigned short int udpPort;
