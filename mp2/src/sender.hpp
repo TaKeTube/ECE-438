@@ -17,13 +17,13 @@ typedef struct timestamp {
 
 class SenderBuffer{
     public:
-        int wait;
         int size;
+        int sent_num;
         std::list<packet_t> data;
         std::list<packet_t>::iterator unsent;
 
         SenderBuffer();
-        void push(packet_t pkt);
+        void push(packet_t &pkt);
         void pop();
         packet_t pop_unsent();
         // void pop_sent(int ack_num);
@@ -33,7 +33,7 @@ class SenderBuffer{
 
 SenderBuffer::SenderBuffer(){
     size = 0;
-    wait = 0;
+    sent_num = 0;
     data = std::list<packet_t>();
     packet_t pkt_holder;
     pkt_holder.type = HOLDER;
@@ -41,7 +41,7 @@ SenderBuffer::SenderBuffer(){
     unsent = data.begin();
 }
 
-void SenderBuffer::push(packet_t pkt){
+void SenderBuffer::push(packet_t &pkt){
     data.push_back(pkt);
     size++;
 };
@@ -50,26 +50,26 @@ void SenderBuffer::push(packet_t pkt){
 //     packet_t pkt = data.front();
 //     data.pop_front();
 //     size--;
-//     wait--;
+//     sent_num--;
 //     return pkt;
 // }
 
 void SenderBuffer::pop(){
     data.pop_front();
     size--;
-    wait--;
+    sent_num--;
 }
 
 packet_t SenderBuffer::pop_unsent(){
     packet_t pkt = *unsent++;
-    wait++;
+    sent_num++;
     return pkt;
 }
 
 // void SenderBuffer::pop_sent(int ack_num){
 //     while(data.front().seq_num <= ack_num){
 //         data.pop_front();
-//         wait--;
+//         sent_num--;
 //         size--;
 //     }
 // }

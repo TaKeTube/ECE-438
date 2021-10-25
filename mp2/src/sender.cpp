@@ -27,8 +27,10 @@
 struct sockaddr_in si_other;
 int s, slen;
 
+FILE *fp;
 state_t tcp_state;
-int cw, sst, dupack;
+double cw = 1.0;
+int sst, dupack, seq_num = 1;
 
 SenderBuffer send_buf = SenderBuffer();
 std::queue<timestamp_t> time_stamp;
@@ -76,14 +78,34 @@ void congestionCtrl(event_t event){
     }
 }
 
-void sendPkt();
-void fullBuf(){
-    
+void sendPkt(){
+
+}
+
+void fillBuf(){
+    int pkt_num = cw - send_buf.size;
+    /* if no need to fill the buffer */
+    if(pkt_num <= 0)
+        return;
+    /* if need to fill the buffer */
+    /* read data from file and package packets */
+    for(int i = 0; i < pkt_num; ++i){
+        packet_t pkt;
+        int nbyte = fread(pkt.data, sizeof(char), MSS, fp);
+        /* if file is not read completely */
+        if(nbyte > 0){
+            /* package new packet */
+            pkt.type = DATA;
+            pkt.seq_num = seq_num++;
+            pkt.nbyte = nbyte;
+            send_buf.push(pkt);
+        }
+    }
+
 }
 
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {
     /* open the file */
-    FILE *fp;
     fp = fopen(filename, "rb");
     if (fp == NULL) {
         printf("Could not open file to send.");
@@ -111,7 +133,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     dupack = 0;
     tcp_state = SLOW_START;
 
-    fullBuf();
+    fillBuf();
     while(!send_buf.empty()){
         
     }
