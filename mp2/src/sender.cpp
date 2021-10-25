@@ -37,45 +37,15 @@ SenderBuffer send_buf = SenderBuffer();
 std::queue<timestamp_t> time_stamps;
 timeval rtt_tv = {0, 2*1000*RTT};
 
+void clearQ( std::queue<timestamp_t> &q )
+{
+    std::queue<timestamp_t> empty;
+    std::swap( q, empty );
+}
 
 void diep(char *s) {
     perror(s);
     exit(1);
-}
-
-void congestionCtrl(event_t event){
-    switch (tcp_state)
-    {
-    case SLOW_START:
-        if(event == TIME_OUT){
-
-        }else if(event == NEW_ACK){
-
-        }else if(event == DUP_ACK){
-
-        }
-        break;
-    case CONGESTION_AVOIDANCE:
-        if(event == TIME_OUT){
-
-        }else if(event == NEW_ACK){
-
-        }else if(event == DUP_ACK){
-            
-        }
-        break;
-    case FAST_RECOVERY:
-        if(event == TIME_OUT){
-
-        }else if(event == NEW_ACK){
-
-        }else if(event == DUP_ACK){
-            
-        }
-        break;
-    default:
-        break;
-    }
 }
 
 void sendPkt(){
@@ -90,6 +60,18 @@ void sendPkt(){
         sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
         setTimeOut();
     }
+}
+
+void resendPkt(){
+    packet_t pkt = send_buf.front();
+    /* set time stamp for this packet */
+    timestamp_t stamp;
+    stamp.seq_num = pkt.seq_num;
+    gettimeofday(&stamp.tv, NULL);
+    time_stamps.push(stamp);
+    /* send packet */
+    sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
+    setTimeOut();
 }
 
 void fillBuf(){
@@ -163,7 +145,6 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     sendPkt();
     while(!send_buf.empty()){
         if(received_pkt.seq_num > send_buf.front().seq_num){
-            send_buf.pop();
             event = NEW_ACK;
         }else{
             if(recvfrom(s, (char*)&received_pkt, sizeof(packet), 0, NULL, NULL) == -1)
@@ -176,8 +157,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 /* DUP ACK */
                 event = DUP_ACK;
             else
-                /* PREV ACK */
-                /*  Ignore  */
+                /* PREV ACK / AHEAD ACK */
+                /*  Ignore  /  Update   */
                 continue;
         }
 
@@ -188,61 +169,92 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         {
         case SLOW_START:
             if(event == TIME_OUT){
-                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                /* clear timestamp */
+                clearQ(time_stamps);
+                /* resend packet */
+                resendPkt();
+                /* update state */
                 sst = cw / 2.0;
                 cw = 1;
                 dupack = 0;
+                if(send_buf.sent_num > cw)
+                    send_buf.sent_num = cw;
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
+                /* update state */
                 cw++;
                 dupack = 0;
+                send_buf.pop();
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
                 if(dupack==3){
-                    sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                    /* resend packet */
+                    resendPkt();
+                    /* update state */
                     sst = cw / 2.0;
                     cw = sst + 3;
                     dupack = 0;
+                    if(send_buf.sent_num > cw)
+                        send_buf.sent_num = cw;
                     tcp_state = FAST_RECOVERY;
                 }
             }
             break;
         case CONGESTION_AVOIDANCE:
             if(event == TIME_OUT){
-                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                /* clear timestamp */
+                clearQ(time_stamps);
+                /* resend packet */
+                resendPkt();
+                /* update state */
                 sst = cw / 2.0;
                 cw = 1;
                 dupack = 0;
+                if(send_buf.sent_num > cw)
+                    send_buf.sent_num = cw;
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
+                /* update state */
                 cw = cw + 1 / floor(cw);
                 dupack = 0;
                 tcp_state = CONGESTION_AVOIDANCE;
+                send_buf.pop();
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
                 if(dupack==3){
-                    sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                    /* resend packet */
+                    resendPkt();
+                    /* update state */
                     sst = cw / 2.0;
                     cw = sst + 3;
                     dupack = 0;
+                    if(send_buf.sent_num > cw)
+                        send_buf.sent_num = cw;
                     tcp_state = FAST_RECOVERY;
                 }
             }
             break;
         case FAST_RECOVERY:
             if(event == TIME_OUT){
-                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                /* clear timestamp */
+                clearQ(time_stamps);
+                /* resend packet */
+                resendPkt();
+                /* update state */
                 sst = cw / 2.0;
                 cw = 1;
                 dupack = 0;
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
+                /* update state */
                 cw = sst;
                 dupack = 0;
                 tcp_state = CONGESTION_AVOIDANCE;
+                send_buf.pop();
             }else if(event == DUP_ACK){
+                /* update state */
                 cw++;
                 dupack++;
                 tcp_state = FAST_RECOVERY;
@@ -251,6 +263,10 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         default:
             break;
         }
+        
+        while(!time_stamps.empty() && time_stamps.front().seq_num <= received_pkt.seq_num)
+            time_stamps.pop();
+        
         sendPkt();
         fillBuf();
     }
@@ -276,5 +292,3 @@ int main(int argc, char** argv) {
 
     return (EXIT_SUCCESS);
 }
-
-
