@@ -26,14 +26,14 @@
 
 struct sockaddr_in si_other;
 int s, slen;
-
 FILE *fp;
+
 state_t tcp_state;
 double cw = 1.0;
 int sst, dupack, seq_num = 1;
 
 SenderBuffer send_buf = SenderBuffer();
-std::queue<timestamp_t> time_stamp;
+std::queue<timestamp_t> time_stamps;
 char[sizeof(packet_t)] pkt_buf;
 
 
@@ -79,7 +79,15 @@ void congestionCtrl(event_t event){
 }
 
 void sendPkt(){
-
+    while(send_buf.sent_num < cw){
+        packet_t pkt = send_buf.popUnsent();
+        /* set time stamp for this packet */
+        timestamp_t stamp;
+        stamp.seq_num = pkt.seq_num;
+        gettimeofday(&stamp.tv, NULL);
+        /* send packet */
+        sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
+    }
 }
 
 void fillBuf(){
@@ -101,7 +109,6 @@ void fillBuf(){
             send_buf.push(pkt);
         }
     }
-
 }
 
 void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer) {

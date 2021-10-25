@@ -16,19 +16,20 @@ typedef struct timestamp {
 } timestamp_t;
 
 class SenderBuffer{
-    public:
-        int size;
-        int sent_num;
-        std::list<packet_t> data;
-        std::list<packet_t>::iterator unsent;
+public:
+    int size;
+    int sent_num;
+    std::list<packet_t> data;
+    std::list<packet_t>::iterator unsent_ptr;
 
-        SenderBuffer();
-        void push(packet_t &pkt);
-        void pop();
-        packet_t pop_unsent();
-        // void pop_sent(int ack_num);
-        packet_t &front();
-        bool empty();
+    SenderBuffer();
+    void push(packet_t &pkt);
+    void pop();
+    packet_t &popUnsent();
+    // void pop_sent(int ack_num);
+    packet_t &front();
+    bool empty();
+    void resetUnsentPtr();
 };
 
 SenderBuffer::SenderBuffer(){
@@ -60,8 +61,8 @@ void SenderBuffer::pop(){
     sent_num--;
 }
 
-packet_t SenderBuffer::pop_unsent(){
-    packet_t pkt = *unsent++;
+packet_t &SenderBuffer::popUnsent(){
+    packet_t &pkt = *unsent_ptr++;
     sent_num++;
     return pkt;
 }
