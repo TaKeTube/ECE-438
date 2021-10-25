@@ -33,15 +33,15 @@ double cw = 1.0;
 int sst, dupack, seq_num = 1;
 
 SenderBuffer send_buf = SenderBuffer();
+
 std::queue<timestamp_t> time_stamps;
-char[sizeof(packet_t)] pkt_buf;
+timeval rtt_tv = {0, 2*1000*RTT};
 
 
 void diep(char *s) {
     perror(s);
     exit(1);
 }
-
 
 void congestionCtrl(event_t event){
     switch (tcp_state)
@@ -85,8 +85,10 @@ void sendPkt(){
         timestamp_t stamp;
         stamp.seq_num = pkt.seq_num;
         gettimeofday(&stamp.tv, NULL);
+        time_stamps.push(stamp);
         /* send packet */
         sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
+        setTimeOut();
     }
 }
 
@@ -108,6 +110,19 @@ void fillBuf(){
             pkt.nbyte = nbyte;
             send_buf.push(pkt);
         }
+    }
+}
+
+void setTimeOut(){
+    timeval curr_tv, diff_tv;
+    if(!time_stamps.empty()){
+        timeval &prev_tv = time_stamps.front().tv;
+        gettimeofday(&curr_tv, NULL);
+        timeradd(prev_tv, rtt_tv, diff_tv);
+        timersub(diff_tv, curr_tv, diff_tv);
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &diff_tv, sizeof(timeval));
+    }else{
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
     }
 }
 
@@ -135,18 +150,110 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Send data and receive acknowledgements on s*/
+    packet_t received_pkt;
+    event_t event;
     cw = 1;
     sst = INIT_SST;
     dupack = 0;
     tcp_state = SLOW_START;
+    received_pkt.seq_num = -1;
+    received_pkt.type = ACK;
 
     fillBuf();
+    sendPkt();
     while(!send_buf.empty()){
-        
+        if(received_pkt.seq_num > send_buf.front().seq_num){
+            send_buf.pop();
+            event = NEW_ACK;
+        }else{
+            if(recvfrom(s, (char*)&received_pkt, sizeof(packet), 0, NULL, NULL) == -1)
+                /* TIME OUT */
+                event = TIME_OUT;
+            else if(received_pkt.seq_num == send_buf.front().seq_num)
+                /* NEW ACK */
+                event = NEW_ACK;
+            else if(received_pkt.seq_num == send_buf.front().seq_num - 1)
+                /* DUP ACK */
+                event = DUP_ACK;
+            else
+                /* PREV ACK */
+                /*  Ignore  */
+                continue;
+        }
+
+        if(received_pkt.type != ACK)
+            continue;
+
+        switch (tcp_state)
+        {
+        case SLOW_START:
+            if(event == TIME_OUT){
+                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                sst = cw / 2.0;
+                cw = 1;
+                dupack = 0;
+                tcp_state = SLOW_START;
+            }else if(event == NEW_ACK){
+                cw++;
+                dupack = 0;
+            }else if(event == DUP_ACK){
+                dupack++;
+                tcp_state = CONGESTION_AVOIDANCE;
+                if(dupack==3){
+                    sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                    sst = cw / 2.0;
+                    cw = sst + 3;
+                    dupack = 0;
+                    tcp_state = FAST_RECOVERY;
+                }
+            }
+            break;
+        case CONGESTION_AVOIDANCE:
+            if(event == TIME_OUT){
+                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                sst = cw / 2.0;
+                cw = 1;
+                dupack = 0;
+                tcp_state = SLOW_START;
+            }else if(event == NEW_ACK){
+                cw = cw + 1 / floor(cw);
+                dupack = 0;
+                tcp_state = CONGESTION_AVOIDANCE;
+            }else if(event == DUP_ACK){
+                dupack++;
+                tcp_state = CONGESTION_AVOIDANCE;
+                if(dupack==3){
+                    sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                    sst = cw / 2.0;
+                    cw = sst + 3;
+                    dupack = 0;
+                    tcp_state = FAST_RECOVERY;
+                }
+            }
+            break;
+        case FAST_RECOVERY:
+            if(event == TIME_OUT){
+                sendto(s, (char*)&send_buf.front(), sizeof(packet), 0, si_other.sin_addr, slen);
+                sst = cw / 2.0;
+                cw = 1;
+                dupack = 0;
+                tcp_state = SLOW_START;
+            }else if(event == NEW_ACK){
+                cw = sst;
+                dupack = 0;
+                tcp_state = CONGESTION_AVOIDANCE;
+            }else if(event == DUP_ACK){
+                cw++;
+                dupack++;
+                tcp_state = FAST_RECOVERY;
+            }
+            break;
+        default:
+            break;
+        }
+        sendPkt();
+        fillBuf();
     }
-
-
-
 
     printf("Closing the socket\n");
     close(s);
@@ -165,10 +272,7 @@ int main(int argc, char** argv) {
     udpPort = (unsigned short int) atoi(argv[2]);
     numBytes = atoll(argv[4]);
 
-
-
     reliablyTransfer(argv[1], udpPort, argv[3], numBytes);
-
 
     return (EXIT_SUCCESS);
 }

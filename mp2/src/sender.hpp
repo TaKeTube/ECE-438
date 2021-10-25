@@ -10,8 +10,10 @@
 enum state_t {SLOW_START, FAST_RECOVERY, CONGESTION_AVOIDANCE};
 enum event_t {NEW_ACK, DUP_ACK, TIME_OUT};
 
+typedef struct timeval timeval;
+
 typedef struct timestamp {
-    struct timeval tv;
+    timeval tv;
     int seq_num;
 } timestamp_t;
 

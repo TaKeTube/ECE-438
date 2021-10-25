@@ -2,6 +2,7 @@
 #define UTILITY_H
 
 #define MSS         512
+#define RTT         20
 
 enum pkt_type {ACK, DATA, SYN, FIN, HOLDER};
 
