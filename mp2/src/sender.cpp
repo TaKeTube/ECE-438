@@ -35,7 +35,7 @@ int dupack, seq_num = 1;
 SenderBuffer send_buf = SenderBuffer();
 
 std::queue<timestamp_t> time_stamps;
-timeval rtt_tv = {0, 2*1000*RTT};
+timeval rtt_tv = {0, 1000*RTO};
 
 void clearQ(std::queue<timestamp_t> &q)
 {
@@ -49,7 +49,13 @@ void diep(char *s) {
 }
 
 void sendPkt(){
-    while(send_buf.sent_num < cw){
+    /*
+     * if the file is already completely read, 
+     * sent_num may never reach cw 
+     * so we cannot simply use cw
+     */
+    int pkt_num = min(floor(cw), send_buf.size()) - sent_num;
+    for(int i = 0; i < pkt_num; ++i){
         packet_t pkt = send_buf.popUnsent();
         /* set time stamp for this packet */
         timestamp_t stamp;
@@ -75,16 +81,22 @@ void resendPkt(){
 }
 
 void fillBuf(){
-    int pkt_num = cw - send_buf.size;
+    int pkt_num = floor(cw) - send_buf.size();
     /* if no need to fill the buffer */
     if(pkt_num <= 0)
         return;
     /* if need to fill the buffer */
     /* read data from file and package packets */
+    /*  
+     * If we use send_buf.size instead of pkt_num in each step, 
+     * if the file is already completely read, 
+     * size may never reach cw 
+    */
     for(int i = 0; i < pkt_num; ++i){
         packet_t pkt;
         int nbyte = fread(pkt.data, sizeof(char), MSS, fp);
-        /* if file is not read completely */
+        /* At the end of file, pkt may not be fully filled */
+        /* Receiver need to read packet according to nbyte */
         if(nbyte > 0){
             /* package new packet */
             pkt.type = DATA;
@@ -134,7 +146,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     /* Send data and receive acknowledgements on s*/
     packet_t received_pkt;
     event_t event;
-    cw = 1;
+    cw = 1.0;
     sst = INIT_SST;
     dupack = 0;
     tcp_state = SLOW_START;
@@ -177,8 +189,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 sst = cw / 2.0;
                 cw = 1.0;
                 dupack = 0;
-                if(send_buf.sent_num > cw)
-                    send_buf.sent_num = cw;
+                send_buf.resetSentWnd(cw);
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
                 /* update state */
@@ -197,8 +208,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     sst = cw / 2.0;
                     cw = sst + 3;
                     dupack = 0;
-                    if(send_buf.sent_num > cw)
-                        send_buf.sent_num = cw;
+                    send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
                 }
             }
@@ -213,8 +223,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 sst = cw / 2.0;
                 cw = 1.0;
                 dupack = 0;
-                if(send_buf.sent_num > cw)
-                    send_buf.sent_num = cw;
+                send_buf.resetSentWnd(cw);
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
                 /* update state */
@@ -232,8 +241,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     sst = cw / 2.0;
                     cw = sst + 3;
                     dupack = 0;
-                    if(send_buf.sent_num > cw)
-                        send_buf.sent_num = cw;
+                    send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
                 }
             }
@@ -269,8 +277,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         while(!time_stamps.empty() && time_stamps.front().seq_num <= received_pkt.seq_num)
             time_stamps.pop();
         
-        sendPkt();
         fillBuf();
+        sendPkt();
     }
 
     printf("Closing the socket\n");
