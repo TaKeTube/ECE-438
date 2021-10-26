@@ -29,18 +29,18 @@ int s, slen;
 FILE *fp;
 
 state_t tcp_state;
-double cw = 1.0;
-int sst, dupack, seq_num = 1;
+double cw = 1.0, sst;
+int dupack, seq_num = 1;
 
 SenderBuffer send_buf = SenderBuffer();
 
 std::queue<timestamp_t> time_stamps;
 timeval rtt_tv = {0, 2*1000*RTT};
 
-void clearQ( std::queue<timestamp_t> &q )
+void clearQ(std::queue<timestamp_t> &q)
 {
     std::queue<timestamp_t> empty;
-    std::swap( q, empty );
+    std::swap(q, empty);
 }
 
 void diep(char *s) {
@@ -175,7 +175,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 resendPkt();
                 /* update state */
                 sst = cw / 2.0;
-                cw = 1;
+                cw = 1.0;
                 dupack = 0;
                 if(send_buf.sent_num > cw)
                     send_buf.sent_num = cw;
@@ -185,6 +185,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 cw++;
                 dupack = 0;
                 send_buf.pop();
+                if(cw >= sst)
+                    tcp_state = CONGESTION_AVOIDANCE;
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
@@ -209,7 +211,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 resendPkt();
                 /* update state */
                 sst = cw / 2.0;
-                cw = 1;
+                cw = 1.0;
                 dupack = 0;
                 if(send_buf.sent_num > cw)
                     send_buf.sent_num = cw;
@@ -244,7 +246,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 resendPkt();
                 /* update state */
                 sst = cw / 2.0;
-                cw = 1;
+                cw = 1.0;
                 dupack = 0;
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){

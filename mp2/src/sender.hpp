@@ -85,4 +85,12 @@ bool SenderBuffer::empty(){
     return size <= 1;
 }
 
+void clearQ(std::queue<timestamp_t> &q);
+void diep(char *s);
+void sendPkt();
+void resendPkt();
+void fillBuf();
+void setTimeOut();
+void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* filename, unsigned long long int bytesToTransfer);
+
 #endif
