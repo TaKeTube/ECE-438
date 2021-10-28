@@ -44,7 +44,8 @@ SenderBuffer::SenderBuffer(){
 
 void SenderBuffer::pop() {
     data.pop_front();
-    sent_num--;
+    if(sent_num > 0)
+        sent_num--;
 }
 
 void SenderBuffer::push(packet_t &pkt) { 

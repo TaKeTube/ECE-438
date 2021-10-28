@@ -1,8 +1,8 @@
 /* 
  * File:   sender_main.c
- * Author: 
+ * Author: Zimu Guan
  *
- * Created on 
+ * Created on 2021.10.23
  */
 
 #include <stdio.h>
@@ -261,6 +261,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 /* update state */
                 cw = sst;
                 dupack = 0;
+                /* TODO need to think for a while, cw would shrink here */
+                send_buf.resetSentWnd(cw);
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
             }else if(event == DUP_ACK){
