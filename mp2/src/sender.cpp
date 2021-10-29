@@ -31,6 +31,7 @@ FILE *fp;
 state_t tcp_state;
 double cw = 1.0, sst;
 int dupack, seq_num = 1;
+long long int nbyteToTransfer;
 
 SenderBuffer send_buf = SenderBuffer();
 
@@ -93,8 +94,11 @@ void fillBuf(){
      * size may never reach cw 
     */
     for(int i = 0; i < pkt_num; ++i){
+        if(nbyteToTransfer <= 0)
+            return;
         packet_t pkt;
-        int nbyte = fread(pkt.data, sizeof(char), MSS, fp);
+        int nbyteExpected = min(nbyteToTransfer, MSS);
+        int nbyte = fread(pkt.data, sizeof(char), nbyteExpected, fp);
         /* At the end of file, pkt may not be fully filled */
         /* Receiver need to read packet according to nbyte */
         if(nbyte > 0){
@@ -103,6 +107,7 @@ void fillBuf(){
             pkt.seq_num = seq_num++;
             pkt.nbyte = nbyte;
             send_buf.push(pkt);
+            nbyteExpected -= nbyte;
         }
     }
 }
@@ -152,6 +157,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     tcp_state = SLOW_START;
     received_pkt.seq_num = -1;
     received_pkt.type = ACK;
+    nbyteToTransfer = bytesToTransfer;
 
     fillBuf();
     sendPkt();

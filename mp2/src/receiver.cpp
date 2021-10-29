@@ -1,8 +1,8 @@
 /* 
- * File:   receiver_main.c
- * Author: 
+ * File:   sender_main.c
+ * Author: Zimu Guan
  *
- * Created on
+ * Created on 2021.10.23
  */
 
 #include <stdio.h>
@@ -29,9 +29,7 @@ void diep(char *s) {
 
 
 void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
-    
     slen = sizeof (si_other);
-
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
@@ -45,10 +43,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         diep("bind");
 
 
-	/* Now receive data and send acknowledgements */    
+    /* Now receive data and send acknowledgements */
 
     close(s);
-	printf("%s received.", destinationFile);
+    printf("%s received.", destinationFile);
     return;
 }
 
