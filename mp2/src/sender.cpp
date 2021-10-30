@@ -64,7 +64,7 @@ void sendPkt(){
         gettimeofday(&stamp.tv, NULL);
         time_stamps.push(stamp);
         /* send packet */
-        sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
+        sendto(s, (char*)&pkt, sizeof(packet_t), 0, si_other.sin_addr, slen);
         setTimeOut();
     }
 }
@@ -77,7 +77,7 @@ void resendPkt(){
     gettimeofday(&stamp.tv, NULL);
     time_stamps.push(stamp);
     /* send packet */
-    sendto(s, (char*)&pkt, sizeof(packet), 0, si_other.sin_addr, slen);
+    sendto(s, (char*)&pkt, sizeof(packet_t), 0, si_other.sin_addr, slen);
     setTimeOut();
 }
 
@@ -165,7 +165,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(received_pkt.seq_num > send_buf.front().seq_num){
             event = NEW_ACK;
         }else{
-            if(recvfrom(s, (char*)&received_pkt, sizeof(packet), 0, NULL, NULL) == -1)
+            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, NULL, NULL) == -1)
                 /* TIME OUT */
                 event = TIME_OUT;
             else if(received_pkt.seq_num == send_buf.front().seq_num)
@@ -285,6 +285,10 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         while(!time_stamps.empty() && time_stamps.front().seq_num <= received_pkt.seq_num)
             time_stamps.pop();
         
+        /* deal with the case that cw is less than 1 */
+        if(cw < 1)
+            cw = 1;
+
         fillBuf();
         sendPkt();
     }
