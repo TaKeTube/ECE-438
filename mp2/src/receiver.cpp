@@ -130,9 +130,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     return;
 }
 
-/*
- * 
- */
+
 int main(int argc, char** argv) {
     unsigned short int udpPort;
 
