@@ -213,7 +213,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(received_pkt.type != ACK)
             continue;
 
-        printf("Ack # %d received.\n", received_pkt.seq_num);
+        if(event != TIME_OUT)
+            printf("Ack # %d received.\n", received_pkt.seq_num);
 
         switch (tcp_state)
         {

@@ -82,8 +82,7 @@ void SenderBuffer::print(double cw){
     int count = 0;
     int cw_floor = (int)cw;
     std::cout << "Packets in SendBuffer: ";
-    if(cw < 0)
-        std::cout << "|CON| ";
+    std::cout << "|CON| ";
     std::cout << "|SENT| ";
     for(std::list<packet_t>::iterator it = data.begin(); it != data.end(); ++it){
         count++;

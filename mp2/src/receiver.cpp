@@ -35,6 +35,14 @@ void diep(char *s) {
     exit(1);
 }
 
+void sendAck(int seq_num){
+    packet_t ack;
+    ack.type = ACK;
+    ack.seq_num = seq_num;
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+    printf("Ack # %d sent.\n", ack.seq_num);
+}
+
 void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
     /* Initialize the UDP socket */
@@ -98,9 +106,6 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     while(pkt.type != FIN){
         if(pkt.type != DATA)
             continue;
-        /* If receive previous packet, ignore it */
-        if(pkt.seq_num < seq_num)
-            continue;
 
         printf("Pkt # %d received.\n", pkt.seq_num);
 
@@ -118,13 +123,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
                 seq_num++;
             }
             /* Send ack */
-            packet_t ack;
-            ack.type = ACK;
-            ack.seq_num = seq_num - 1;
-            sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
-            printf("Ack # %d sent.\n", ack.seq_num);
+            sendAck(seq_num-1);
         /* If receive ahead packet */
-        }else{
+        }else if(pkt.seq_num > seq_num){
             int offset = pkt.seq_num - seq_num;
             bool full_flag = false;
 
@@ -153,16 +154,16 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             // }
             
             /* send ack */
-            packet_t ack;
-            ack.type = ACK;
-            ack.seq_num = seq_num - 1;
-            sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
-            printf("Ack # %d sent.\n", ack.seq_num);
+            sendAck(seq_num-1);
 
             /* buffer the packet if needed */
             if((*buf_pkt_ptr).type == HOLDER)
                 (*buf_pkt_ptr) = pkt;
+        }else{
+            /* If receive previous packet, just send expected ack */
+            sendAck(seq_num);
         }
+
         recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
     }
 
