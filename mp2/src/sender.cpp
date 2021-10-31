@@ -66,6 +66,7 @@ void sendPkt(){
         time_stamps.push(stamp);
         /* send packet */
         sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+        printf("Pkt # %d sent.\n", pkt.seq_num);
         setTimeOut();
     }
 }
@@ -79,6 +80,7 @@ void resendPkt(){
     time_stamps.push(stamp);
     /* send packet */
     sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+    printf("Pkt # %d resent.\n", pkt.seq_num);
     setTimeOut();
 }
 
@@ -161,13 +163,16 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             printf("Time Out, resend SYN.\n");
             continue;
         }
-        if(pkt_buf.type == SYNACK)
+        if(pkt_buf.type == SYNACK){
+            printf("SYNACK received.\n");
             break;
+        }
         printf("Unknown Pkt, resend SYN.\n");
     }
     packet_t ack;
     ack.type = ACK;
     sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+    printf("ACK sent.\n");
 
     /* initialize */
     packet_t received_pkt;
@@ -186,9 +191,11 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(received_pkt.seq_num > send_buf.front().seq_num){
             event = NEW_ACK;
         }else{
-            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, NULL, NULL) == -1)
+            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, NULL, NULL) == -1){
                 /* TIME OUT */
                 event = TIME_OUT;
+                printf("Time Out.\n");
+            }
             else if(received_pkt.seq_num == send_buf.front().seq_num)
                 /* NEW ACK */
                 event = NEW_ACK;
@@ -203,6 +210,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
         if(received_pkt.type != ACK)
             continue;
+
+        printf("Ack # %d received.\n", received_pkt.seq_num);
 
         switch (tcp_state)
         {

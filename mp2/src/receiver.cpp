@@ -67,7 +67,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
     /* initialization */
     FILE* fp = fopen(destinationFile,"wb");
-    int seq_num = 0;
+    int seq_num = 1;
     packet_t empty_pkt;
     empty_pkt.type = HOLDER;
 
@@ -101,8 +101,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         /* If receive previous packet, ignore it */
         if(pkt.seq_num < seq_num)
             continue;
+
+        printf("Pkt # %d received.\n", pkt.seq_num);
+
         /* If receive the correct packet */
-        else if(pkt.seq_num == seq_num){
+        if(pkt.seq_num == seq_num){
             (*recv_buf_begin) = pkt;
             while((*recv_buf_begin).type == DATA){
                 /* write buffered packets */
@@ -119,6 +122,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             ack.type = ACK;
             ack.seq_num = seq_num - 1;
             sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+            printf("Ack # %d sent.\n", ack.seq_num);
         /* If receive ahead packet */
         }else{
             int offset = pkt.seq_num - seq_num;
@@ -151,12 +155,12 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             ack.type = ACK;
             ack.seq_num = seq_num - 1;
             sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+            printf("Ack # %d sent.\n", ack.seq_num);
 
             /* buffer the packet if needed */
             if((*buf_pkt_ptr).type == HOLDER)
                 (*buf_pkt_ptr) = pkt;
         }
-
         packet_t pkt;
         recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
     }
