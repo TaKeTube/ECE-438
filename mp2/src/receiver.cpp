@@ -25,6 +25,8 @@
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
+struct sockaddr_storage their_addr;
+socklen_t addr_len;
 
 timeval rtt_tv = {0, 1000*RTO};
 
@@ -46,17 +48,19 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     si_me.sin_port = htons(myUDPport);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
     printf("Now binding\n");
-    if (bind(s, (struct sockaddr*) &si_me, sizeof (si_me)) == -1)
+    if (bind(s, (sockaddr*) &si_me, sizeof (si_me)) == -1)
         diep((char*)"bind");
+
+    addr_len = sizeof their_addr;
 
     /* Now receive data and send acknowledgements */
     /* 3 ways handshakes */
     packet_t pkt_buf;
     while(1){
-        printf("Receiving SYN...");
-        recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL);
+        printf("Receiving SYN...\n");
+        recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len));
         if(pkt_buf.type == SYN){
-            printf("SYN received.");
+            printf("SYN received.\n");
             break;
         }
     }
@@ -78,13 +82,13 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     synack.type = SYNACK;
     packet_t pkt;
     while(1){
-        sendto(s, (char*)&synack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+        sendto(s, (char*)&synack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
-        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL) == -1){
-            printf("Time Out, resend SYNACK.");
+        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len)) == -1){
+            printf("Time Out, resend SYNACK.\n");
         }
         if(pkt.type == ACK){
-            recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL);
+            recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len));
             break;
         }
         if(pkt.type == DATA)
@@ -114,7 +118,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             packet_t ack;
             ack.type = ACK;
             ack.seq_num = seq_num - 1;
-            sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+            sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         /* If receive ahead packet */
         }else{
             int offset = pkt.seq_num - seq_num;
@@ -146,7 +150,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             packet_t ack;
             ack.type = ACK;
             ack.seq_num = seq_num - 1;
-            sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+            sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
 
             /* buffer the packet if needed */
             if((*buf_pkt_ptr).type == HOLDER)
@@ -154,12 +158,12 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         }
 
         packet_t pkt;
-        recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL);
+        recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len));
     }
 
     packet_t finack;
     finack.type = FINACK;
-    sendto(s, (char*)&finack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
+    sendto(s, (char*)&finack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
 
     close(s);
     printf("%s received.", destinationFile);

@@ -130,7 +130,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     /* open the file */
     fp = fopen(filename, "rb");
     if (fp == NULL) {
-        printf("Could not open file to send.");
+        printf("Could not open file to send.\n");
         exit(1);
     }
 
@@ -158,12 +158,12 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         sendto(s, (char*)&syn, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
-            printf("Time Out, resend SYN.");
+            printf("Time Out, resend SYN.\n");
             continue;
         }
         if(pkt_buf.type == SYNACK)
             break;
-        printf("Unknown Pkt, resend SYN.");
+        printf("Unknown Pkt, resend SYN.\n");
     }
     packet_t ack;
     ack.type = ACK;
@@ -320,12 +320,12 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         sendto(s, (char*)&fin, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
-            printf("Time Out, resend FIN.");
+            printf("Time Out, resend FIN.\n");
             continue;
         }
         if(pkt_buf.type == FINACK)
             break;
-        printf("Unknown Pkt, resend FIN.");
+        printf("Unknown Pkt, resend FIN.\n");
     }
     ack.type = ACK;
     sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
