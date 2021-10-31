@@ -149,6 +149,26 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
 
     /* Send data and receive acknowledgements on s*/
+    /* 3 ways handshakes */
+    packet_t syn;
+    packet_t pkt_buf;
+    syn.type = SYN;
+    while(1){
+        sendto(s, (char*)&syn, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
+        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
+            printf("Time Out, resend SYN.");
+            continue;
+        }
+        if(pkt_buf.type == SYNACK)
+            break;
+        printf("Unknown Pkt, resend SYN.");
+    }
+    packet_t ack;
+    ack.type = ACK;
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, si_other.sin_addr, slen);
+
+    /* initialize */
     packet_t received_pkt;
     event_t event;
     cw = 1.0;
@@ -292,6 +312,22 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         fillBuf();
         sendPkt();
     }
+
+    packet_t fin;
+    fin.type = FIN;
+    while(1){
+        sendto(s, (char*)&fin, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
+        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
+            printf("Time Out, resend FIN.");
+            continue;
+        }
+        if(pkt_buf.type == FINACK)
+            break;
+        printf("Unknown Pkt, resend FIN.");
+    }
+    ack.type = ACK;
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, si_other.sin_addr, slen);
 
     printf("Closing the socket\n");
     close(s);

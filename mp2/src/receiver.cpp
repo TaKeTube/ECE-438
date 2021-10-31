@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 #include <list>
 #include "utility.h"
@@ -23,6 +24,8 @@
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
+
+timeval rtt_tv = {0, 1000*RTO};
 
 void diep(char *s) {
     perror(s);
@@ -45,20 +48,48 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     if (bind(s, (struct sockaddr*) &si_me, sizeof (si_me)) == -1)
         diep("bind");
 
+    /* Now receive data and send acknowledgements */
+    /* 3 ways handshakes */
+    packet_t pkt_buf;
+    while(1){
+        printf("Receiving SYN...");
+        recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL);
+        if(pkt_buf.type == SYN){
+            printf("SYN received.");
+            break;
+        }
+    }
+
+    /* initialization */
     FILE* fp = fopen(destinationFile,"wb");
     int seq_num = 0;
     packet_t empty_pkt;
     empty_pkt.type = HOLDER;
-    
+
     /* initialize receive buffer */
     std::list<packet> recv_buf = std::list<packet>();
     for(int i = 0; i < RECV_BUF_SIZE; ++i)
         recv_buf.emplace_back(empty_pkt);
     std::list<packet>::iterator recv_buf_begin = recv_buf.begin();
 
+    /* send synack */
+    packet_t synack;
+    synack.type = SYNACK;
     packet_t pkt;
-    /* Now receive data and send acknowledgements */
-    recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL);
+    while(1){
+        sendto(s, (char*)&synack, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
+        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL) == -1){
+            printf("Time Out, resend SYNACK.");
+        }
+        if(pkt == ACK){
+            recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL);
+            break;
+        }
+        if(pkt == DATA)
+            break;
+    }
+
     while(pkt.type != FIN){
         if(pkt.type != DATA)
             continue;
@@ -124,6 +155,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         packet_t pkt;
         recvfrom(s, (char*)&pkt, sizeof(packet), 0, NULL, NULL);
     }
+
+    packet_t finack;
+    finack.type = FINACK;
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, si_other.sin_addr, slen);
 
     close(s);
     printf("%s received.", destinationFile);
