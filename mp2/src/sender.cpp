@@ -112,7 +112,7 @@ void fillBuf(){
             pkt.seq_num = seq_num++;
             pkt.nbyte = nbyte;
             send_buf.push(pkt);
-            nbyteExpected -= nbyte;
+            nbyteToTransfer -= nbyte;
         }
     }
 }
