@@ -121,7 +121,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             packet_t ack;
             ack.type = ACK;
             ack.seq_num = seq_num - 1;
-            sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+            sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
             printf("Ack # %d sent.\n", ack.seq_num);
         /* If receive ahead packet */
         }else{

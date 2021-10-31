@@ -28,6 +28,8 @@
 struct sockaddr_in si_other;
 int s, slen;
 FILE *fp;
+struct sockaddr_storage their_addr;
+socklen_t addr_len;
 
 state_t tcp_state;
 double cw = 1.0, sst;
@@ -159,7 +161,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     while(1){
         sendto(s, (char*)&syn, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
-        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
+        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
             printf("Time Out, resend SYN.\n");
             continue;
         }
@@ -191,7 +193,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(received_pkt.seq_num > send_buf.front().seq_num){
             event = NEW_ACK;
         }else{
-            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, NULL, NULL) == -1){
+            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
                 /* TIME OUT */
                 event = TIME_OUT;
                 printf("Time Out.\n");
@@ -328,7 +330,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     while(1){
         sendto(s, (char*)&fin, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
-        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
+        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
             printf("Time Out, resend FIN.\n");
             continue;
         }
