@@ -58,7 +58,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     packet_t pkt_buf;
     while(1){
         printf("Receiving SYN...\n");
-        recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len));
+        recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len);
         if(pkt_buf.type == SYN){
             printf("SYN received.\n");
             break;
@@ -84,11 +84,11 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     while(1){
         sendto(s, (char*)&synack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
-        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len)) == -1){
+        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len) == -1){
             printf("Time Out, resend SYNACK.\n");
         }
         if(pkt.type == ACK){
-            recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len));
+            recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
             break;
         }
         if(pkt.type == DATA)
@@ -158,7 +158,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         }
 
         packet_t pkt;
-        recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len));
+        recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
     }
 
     packet_t finack;
