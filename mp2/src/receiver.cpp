@@ -21,7 +21,7 @@
 #include <list>
 #include "utility.h"
 
-#define RECV_BUF_SIZE    128
+#define RECV_BUF_SIZE    256
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
@@ -142,8 +142,10 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
                 offset--;
             }
             /* if buffer is full, drop the packet */
-            if(full_flag)
+            if(full_flag){
+                printf("Buffer full. Drop pkt # %d.\n", pkt.seq_num);
                 continue;
+            }
 
             /* check whether the buf_pkt_ptr points to the correst place */
             // if((*buf_pkt_ptr).type == DATA && (*buf_pkt_ptr).seq_num != pkt.seq_num){
@@ -161,7 +163,6 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             if((*buf_pkt_ptr).type == HOLDER)
                 (*buf_pkt_ptr) = pkt;
         }
-        packet_t pkt;
         recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
     }
 

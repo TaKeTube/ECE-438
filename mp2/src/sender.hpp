@@ -52,8 +52,8 @@ void SenderBuffer::pop() {
 
 void SenderBuffer::push(packet_t &pkt) { 
     data.emplace_back(pkt); 
-    if(data.size() == 1) 
-        unsent_ptr = data.begin(); 
+    if(unsent_ptr == data.end())
+        unsent_ptr--; 
 }
 
 packet_t &SenderBuffer::popUnsent(){
