@@ -196,7 +196,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
             if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
                 /* TIME OUT */
                 event = TIME_OUT;
-                printf("Time Out.\n");
+                printf("|| Time Out ||\n");
             }
             else if(received_pkt.seq_num == send_buf.front().seq_num)
                 /* NEW ACK */
@@ -234,8 +234,10 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 cw++;
                 dupack = 0;
                 send_buf.pop();
-                if(cw >= sst)
+                if(cw >= sst){
                     tcp_state = CONGESTION_AVOIDANCE;
+                    printf("|| CONGESTION_AVOIDANCE ||\n");
+                }
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
@@ -248,6 +250,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     dupack = 0;
                     send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
+                    printf("|| FAST_RECOVERY ||\n");
                 }
             }
             break;
@@ -263,6 +266,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 dupack = 0;
                 send_buf.resetSentWnd(cw);
                 tcp_state = SLOW_START;
+                printf("|| SLOW_START ||\n");
             }else if(event == NEW_ACK){
                 /* update state */
                 cw = cw + 1 / (int)cw;
@@ -281,6 +285,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     dupack = 0;
                     send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
+                    printf("|| FAST_RECOVERY ||\n");
                 }
             }
             break;
@@ -295,6 +300,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 cw = 1.0;
                 dupack = 0;
                 tcp_state = SLOW_START;
+                printf("|| SLOW_START ||\n");
             }else if(event == NEW_ACK){
                 /* update state */
                 cw = sst;
@@ -303,6 +309,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 send_buf.resetSentWnd(cw);
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
+                printf("|| CONGESTION_AVOIDANCE ||\n");
             }else if(event == DUP_ACK){
                 /* update state */
                 cw++;
