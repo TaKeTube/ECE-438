@@ -1,6 +1,8 @@
 #ifndef SENDER_HPP
 #define SENDER_HPP
 
+#include <iostream>
+#include <cmath>
 #include <sys/time.h>
 #include <list>
 #include "utility.h"
@@ -67,9 +69,8 @@ packet_t &SenderBuffer::popUnsent(){
 
 void SenderBuffer::resetSentWnd(double cw){
     if(sent_num > cw){
-        int floor_cw = floor(cw);
         int count = 0;
-        sent_num = floor_cw;
+        sent_num = (int)cw;
         unsent_ptr = data.begin();
         while((count++) < sent_num)
             unsent_ptr++;
@@ -79,7 +80,7 @@ void SenderBuffer::resetSentWnd(double cw){
 /* For debugging */
 void SenderBuffer::print(double cw){
     int count = 0;
-    int cw_floor = floor(cw);
+    int cw_floor = (int)cw;
     std::cout << "Packets in SendBuffer: ";
     if(cw < 0)
         std::cout << "|CON| ";

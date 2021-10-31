@@ -1,3 +1,5 @@
+CC=g++
+
 #If you use threads, add -pthread here.
 COMPILERFLAGS = -g -Wall -Wextra -Wno-sign-compare -std=c++11
 

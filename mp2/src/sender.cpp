@@ -19,6 +19,7 @@
 #include <signal.h>
 #include <string.h>
 #include <sys/time.h>
+#include <algorithm>
 
 #include <list>
 #include <queue>
@@ -55,7 +56,7 @@ void sendPkt(){
      * sent_num may never reach cw 
      * so we cannot simply use cw
      */
-    int pkt_num = min(floor(cw), send_buf.size()) - sent_num;
+    int pkt_num = std::min((int)cw, send_buf.size()) - send_buf.sent_num;
     for(int i = 0; i < pkt_num; ++i){
         packet_t pkt = send_buf.popUnsent();
         /* set time stamp for this packet */
@@ -64,7 +65,7 @@ void sendPkt(){
         gettimeofday(&stamp.tv, NULL);
         time_stamps.push(stamp);
         /* send packet */
-        sendto(s, (char*)&pkt, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setTimeOut();
     }
 }
@@ -77,12 +78,12 @@ void resendPkt(){
     gettimeofday(&stamp.tv, NULL);
     time_stamps.push(stamp);
     /* send packet */
-    sendto(s, (char*)&pkt, sizeof(packet_t), 0, si_other.sin_addr, slen);
+    sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
     setTimeOut();
 }
 
 void fillBuf(){
-    int pkt_num = floor(cw) - send_buf.size();
+    int pkt_num = (int)cw - send_buf.size();
     /* if no need to fill the buffer */
     if(pkt_num <= 0)
         return;
@@ -97,7 +98,7 @@ void fillBuf(){
         if(nbyteToTransfer <= 0)
             return;
         packet_t pkt;
-        int nbyteExpected = min(nbyteToTransfer, MSS);
+        int nbyteExpected = (nbyteToTransfer >= MSS) ? MSS : ((int)nbyteToTransfer);
         int nbyte = fread(pkt.data, sizeof(char), nbyteExpected, fp);
         /* At the end of file, pkt may not be fully filled */
         /* Receiver need to read packet according to nbyte */
@@ -117,8 +118,8 @@ void setTimeOut(){
     if(!time_stamps.empty()){
         timeval &prev_tv = time_stamps.front().tv;
         gettimeofday(&curr_tv, NULL);
-        timeradd(prev_tv, rtt_tv, diff_tv);
-        timersub(diff_tv, curr_tv, diff_tv);
+        timeradd(&prev_tv, &rtt_tv, &diff_tv);
+        timersub(&diff_tv, &curr_tv, &diff_tv);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &diff_tv, sizeof(timeval));
     }else{
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
@@ -138,7 +139,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     slen = sizeof (si_other);
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
-        diep("socket");
+        diep((char*)"socket");
 
     memset((char *) &si_other, 0, sizeof (si_other));
     si_other.sin_family = AF_INET;
@@ -154,7 +155,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     packet_t pkt_buf;
     syn.type = SYN;
     while(1){
-        sendto(s, (char*)&syn, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        sendto(s, (char*)&syn, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
             printf("Time Out, resend SYN.");
@@ -166,7 +167,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     }
     packet_t ack;
     ack.type = ACK;
-    sendto(s, (char*)&ack, sizeof(packet_t), 0, si_other.sin_addr, slen);
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
 
     /* initialize */
     packet_t received_pkt;
@@ -253,7 +254,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 tcp_state = SLOW_START;
             }else if(event == NEW_ACK){
                 /* update state */
-                cw = cw + 1 / floor(cw);
+                cw = cw + 1 / (int)cw;
                 dupack = 0;
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
@@ -316,7 +317,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
     packet_t fin;
     fin.type = FIN;
     while(1){
-        sendto(s, (char*)&fin, sizeof(packet_t), 0, si_other.sin_addr, slen);
+        sendto(s, (char*)&fin, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, NULL, NULL) == -1){
             printf("Time Out, resend FIN.");
@@ -327,7 +328,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         printf("Unknown Pkt, resend FIN.");
     }
     ack.type = ACK;
-    sendto(s, (char*)&ack, sizeof(packet_t), 0, si_other.sin_addr, slen);
+    sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
 
     printf("Closing the socket\n");
     close(s);
