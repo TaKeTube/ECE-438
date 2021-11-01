@@ -40,7 +40,9 @@ void sendAck(int seq_num){
     ack.type = ACK;
     ack.seq_num = seq_num;
     sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+    #ifdef DEBUG
     printf("Ack # %d sent.\n", ack.seq_num);
+    #endif
 }
 
 void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
@@ -65,10 +67,14 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     /* 3 ways handshakes */
     packet_t pkt_buf;
     while(1){
+        #ifdef DEBUG
         printf("Receiving SYN...\n");
+        #endif
         recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len);
         if(pkt_buf.type == SYN){
+            #ifdef DEBUG
             printf("SYN received.\n");
+            #endif
             break;
         }
     }
@@ -93,13 +99,13 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         sendto(s, (char*)&synack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len) == -1){
+            #ifdef DEBUG
             printf("Time Out, resend SYNACK.\n");
-        }
-        if(pkt.type == ACK){
+            #endif
+        }else if(pkt.type == ACK){
             recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
             break;
-        }
-        if(pkt.type == DATA)
+        }else if(pkt.type == DATA)
             break;
     }
 
@@ -107,7 +113,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
         if(pkt.type != DATA)
             continue;
 
+        #ifdef DEBUG
         printf("Pkt # %d received.\n", pkt.seq_num);
+        #endif
 
         /* If receive the correct packet */
         if(pkt.seq_num == seq_num){
@@ -144,7 +152,9 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             }
             /* if buffer is full, drop the packet */
             if(full_flag){
+                #ifdef DEBUG
                 printf("Buffer full. Drop pkt # %d.\n", pkt.seq_num);
+                #endif
                 continue;
             }
 

@@ -1,6 +1,8 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#define DEBUG
+
 #define MSS         512
 #define RTT         20
 #define RTO         (2*RTT)
