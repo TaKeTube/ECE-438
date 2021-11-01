@@ -22,7 +22,7 @@
 #include "utility.h"
 
 #define MAX_FINACK      10
-#define RECV_BUF_SIZE   256
+#define RECV_BUF_SIZE   512
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
@@ -111,9 +111,13 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     }
 
     while(pkt.type != FIN){
-        if(pkt.type != DATA)
-        /* TODO may have infinite loop */
+        if(pkt.type != DATA){
+            #ifdef DEBUG
+            printf("Non-Data Pkt received, drop.\n");
+            #endif
+            recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
             continue;
+        }
 
         #ifdef DEBUG
         printf("Pkt # %d received.\n", pkt.seq_num);
@@ -172,8 +176,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             if((*buf_pkt_ptr).type == HOLDER)
                 (*buf_pkt_ptr) = pkt;
         }else{
-            /* If receive previous packet, just send expected ack */
-            sendAck(seq_num);
+            /* If receive previous packet, just send ack */
+            sendAck(seq_num-1);
         }
 
         recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
