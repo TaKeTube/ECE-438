@@ -21,7 +21,8 @@
 #include <list>
 #include "utility.h"
 
-#define RECV_BUF_SIZE    256
+#define MAX_FINACK      10
+#define RECV_BUF_SIZE   256
 
 struct sockaddr_in si_me, si_other;
 int s, slen;
@@ -111,6 +112,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
 
     while(pkt.type != FIN){
         if(pkt.type != DATA)
+        /* TODO may have infinite loop */
             continue;
 
         #ifdef DEBUG
@@ -178,8 +180,24 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     }
 
     packet_t finack;
+    packet_t pkt_buf;
     finack.type = FINACK;
-    sendto(s, (char*)&finack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+    for(int i = 0; i++; i < MAX_FINACK){
+        sendto(s, (char*)&finack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+        setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
+        if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
+            #ifdef DEBUG
+            printf("Time Out, resend FINACK.\n");
+            #endif
+            continue;
+        }
+        if(pkt_buf.type == ACK){
+            #ifdef DEBUG
+            printf("ACK received. Close.\n");
+            #endif
+            break;
+        }
+    }
 
     close(s);
     printf("%s received.", destinationFile);
