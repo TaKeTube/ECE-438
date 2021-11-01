@@ -332,8 +332,13 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 /* update state */
                 cw = sst;
                 dupack = 0;
-                /* TODO need to think for a while, cw would shrink here */
-                send_buf.resetSentWnd(cw);
+                /* cw would shrink here */
+                /* 
+                 * if it received a super ahead pkt
+                 * buffer would continiously pop, then may pop the node which is pointed by unsent_ptr
+                 * next time when we call popUnsent, unsent_ptr would point to an invalid address and cause segmentation fault
+                 */
+                // send_buf.resetSentWnd(cw);
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
                 #ifdef DEBUG

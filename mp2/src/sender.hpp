@@ -45,6 +45,8 @@ SenderBuffer::SenderBuffer(){
 }
 
 void SenderBuffer::pop() {
+    if(unsent_ptr == data.begin())
+        unsent_ptr++;
     data.pop_front();
     if(sent_num > 0)
         sent_num--;
