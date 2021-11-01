@@ -184,9 +184,8 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     }
 
     packet_t finack;
-    packet_t pkt_buf;
     finack.type = FINACK;
-    for(int i = 0; i++; i < MAX_FINACK){
+    for(int i = 0; i < MAX_FINACK; ++i){
         sendto(s, (char*)&finack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
         if(recvfrom(s, (char*)&pkt_buf, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
