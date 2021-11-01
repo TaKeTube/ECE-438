@@ -3,7 +3,7 @@
 
 #define DEBUG
 
-#define MSS         512
+#define MSS         1024
 #define RTT         20
 #define RTO         (2*RTT)
 

@@ -1,7 +1,12 @@
 CC=g++
+ver = debug
 
 #If you use threads, add -pthread here.
-COMPILERFLAGS = -g -Wall -Wextra -Wno-sign-compare -std=c++11
+ifeq ($(ver), release)
+	COMPILERFLAGS = -O3 -Wall -Wextra -Wno-sign-compare -std=c++11
+else
+	COMPILERFLAGS = -g -Wall -Wextra -Wno-sign-compare -std=c++11 -DDEBUG
+endif
 
 #Any libraries you might need linked in.
 LINKLIBS = -lpthread
