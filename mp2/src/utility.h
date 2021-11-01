@@ -1,7 +1,7 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
-#define DEBUG
+// #define DEBUG
 
 #define MSS         1024
 #define RTT         20

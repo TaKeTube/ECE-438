@@ -128,7 +128,7 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
             (*recv_buf_begin) = pkt;
             while((*recv_buf_begin).type == DATA){
                 /* write buffered packets */
-                fwrite(pkt.data, sizeof(char), pkt.nbyte, fp);
+                fwrite((*recv_buf_begin).data, sizeof(char), (*recv_buf_begin).nbyte, fp);
                 (*recv_buf_begin) = empty_pkt;
                 recv_buf_begin++;
                 /* skip the end node of stl list */
