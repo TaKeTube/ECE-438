@@ -40,7 +40,7 @@ void sendAck(int seq_num){
     packet_t ack;
     ack.type = ACK;
     ack.seq_num = seq_num;
-    sendto(s, (char*)&ack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
+    sendto(s, (char*)&ack, sizeof(ack_t), 0, (sockaddr*)&their_addr, addr_len);
     #ifdef DEBUG
     printf("Ack # %d sent.\n", ack.seq_num);
     #endif
@@ -99,12 +99,12 @@ void reliablyReceive(unsigned short int myUDPport, char* destinationFile) {
     while(1){
         sendto(s, (char*)&synack, sizeof(packet_t), 0, (sockaddr*)&their_addr, addr_len);
         setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtt_tv, sizeof(timeval));
-        if(recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len) == -1){
+        if(recvfrom(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
             #ifdef DEBUG
             printf("Time Out, resend SYNACK.\n");
             #endif
         }else if(pkt.type == ACK){
-            recvfrom(s, (char*)&pkt, sizeof(packet), 0, (sockaddr *)&their_addr, &addr_len);
+            recvfrom(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len);
             break;
         }else if(pkt.type == DATA)
             break;

@@ -205,7 +205,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         if(received_pkt.seq_num > send_buf.front().seq_num){
             event = NEW_ACK;
         }else{
-            if(recvfrom(s, (char*)&received_pkt, sizeof(packet_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
+            if(recvfrom(s, (char*)&received_pkt, sizeof(ack_t), 0, (sockaddr *)&their_addr, &addr_len) == -1){
                 /* TIME OUT */
                 event = TIME_OUT;
                 #ifdef DEBUG
@@ -259,8 +259,8 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 }
             }else if(event == DUP_ACK){
                 dupack++;
-                tcp_state = CONGESTION_AVOIDANCE;
-                if(dupack==3){
+                tcp_state = SLOW_START;
+                if(dupack>=3){
                     /* resend packet */
                     resendPkt();
                     /* update state */
@@ -292,14 +292,14 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 #endif
             }else if(event == NEW_ACK){
                 /* update state */
-                cw = cw + 1 / (int)cw;
+                cw = cw + (1.0 / (int)cw);
                 dupack = 0;
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
-                if(dupack==3){
+                if(dupack>=3){
                     /* resend packet */
                     resendPkt();
                     /* update state */
@@ -357,10 +357,16 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
         
         while(!time_stamps.empty() && time_stamps.front().seq_num <= received_pkt.seq_num)
             time_stamps.pop();
+
+        #ifdef DEBUG
+        printf("cw: %f, sst: %f\n", cw, sst);
+        #endif
         
         /* deal with the case that cw is less than 1 */
         if(cw < 1)
             cw = 1;
+        if(sst < 1)
+            sst = 1;
 
         fillBuf();
         sendPkt();

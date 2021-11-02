@@ -7,7 +7,7 @@
 #include <list>
 #include "utility.h"
 
-#define INIT_SST    256
+#define INIT_SST    64
 
 enum state_t {SLOW_START, FAST_RECOVERY, CONGESTION_AVOIDANCE};
 enum event_t {NEW_ACK, DUP_ACK, TIME_OUT};

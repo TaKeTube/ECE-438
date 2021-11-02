@@ -3,7 +3,7 @@
 
 // #define DEBUG
 
-#define MSS         1024
+#define MSS         1472
 #define RTT         20
 #define RTO         (2*RTT)
 
@@ -15,5 +15,10 @@ typedef struct packet {
     int         nbyte;
     char        data[MSS];
 } packet_t;
+
+typedef struct ack_type {
+    pkt_type    type;
+    int         seq_num;
+} ack_t;
 
 #endif
