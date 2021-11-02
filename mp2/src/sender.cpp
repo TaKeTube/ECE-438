@@ -85,7 +85,7 @@ void resendPkt(){
     /* send packet */
     sendto(s, (char*)&pkt, sizeof(packet_t), 0, (sockaddr*)&si_other, slen);
     #ifdef DEBUG
-    printf("Pkt # %d resent.\n", pkt.seq_num);
+    printf("Pkt # %d resent. ", pkt.seq_num);
     #endif
     setTimeOut();
 }
@@ -229,7 +229,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
 
         #ifdef DEBUG
         if(event != TIME_OUT)
-            printf("Ack # %d received.\n", received_pkt.seq_num);
+            printf("Ack # %d received. ", received_pkt.seq_num);
         #endif
 
         switch (tcp_state)
@@ -254,13 +254,16 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 if(cw >= sst){
                     tcp_state = CONGESTION_AVOIDANCE;
                     #ifdef DEBUG
-                    printf("|| CONGESTION_AVOIDANCE ||\n");
+                    printf("|| CONGESTION_AVOIDANCE || ");
                     #endif
                 }
             }else if(event == DUP_ACK){
                 dupack++;
                 tcp_state = SLOW_START;
                 if(dupack>=3){
+                    #ifdef DEBUG
+                    printf("|| FAST_RECOVERY || ");
+                    #endif
                     /* resend packet */
                     resendPkt();
                     /* update state */
@@ -269,9 +272,6 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     dupack = 0;
                     send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
-                    #ifdef DEBUG
-                    printf("|| FAST_RECOVERY ||\n");
-                    #endif
                 }
             }
             break;
@@ -288,7 +288,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 send_buf.resetSentWnd(cw);
                 tcp_state = SLOW_START;
                 #ifdef DEBUG
-                printf("|| SLOW_START ||\n");
+                printf("|| SLOW_START || ");
                 #endif
             }else if(event == NEW_ACK){
                 /* update state */
@@ -300,6 +300,9 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 dupack++;
                 tcp_state = CONGESTION_AVOIDANCE;
                 if(dupack>=3){
+                    #ifdef DEBUG
+                    printf("|| FAST_RECOVERY || ");
+                    #endif
                     /* resend packet */
                     resendPkt();
                     /* update state */
@@ -308,14 +311,14 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                     dupack = 0;
                     send_buf.resetSentWnd(cw);
                     tcp_state = FAST_RECOVERY;
-                    #ifdef DEBUG
-                    printf("|| FAST_RECOVERY ||\n");
-                    #endif
                 }
             }
             break;
         case FAST_RECOVERY:
             if(event == TIME_OUT){
+                #ifdef DEBUG
+                printf("|| SLOW_START || ");
+                #endif
                 /* clear timestamp */
                 clearQ(time_stamps);
                 /* resend packet */
@@ -325,9 +328,6 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 cw = 1.0;
                 dupack = 0;
                 tcp_state = SLOW_START;
-                #ifdef DEBUG
-                printf("|| SLOW_START ||\n");
-                #endif
             }else if(event == NEW_ACK){
                 /* update state */
                 cw = sst;
@@ -342,7 +342,7 @@ void reliablyTransfer(char* hostname, unsigned short int hostUDPport, char* file
                 tcp_state = CONGESTION_AVOIDANCE;
                 send_buf.pop();
                 #ifdef DEBUG
-                printf("|| CONGESTION_AVOIDANCE ||\n");
+                printf("|| CONGESTION_AVOIDANCE || ");
                 #endif
             }else if(event == DUP_ACK){
                 /* update state */

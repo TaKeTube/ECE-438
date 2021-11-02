@@ -5,7 +5,7 @@
 
 #define MSS         1472
 #define RTT         20
-#define RTO         (2*RTT)
+#define RTO         (2*RTT+10)
 
 enum pkt_type {ACK, DATA, SYN, SYNACK, FIN, FINACK, HOLDER};
 
