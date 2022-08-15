@@ -40,3 +40,4 @@ The project is based on MP2 of [ECE/CS 438](https://courses.grainger.illinois.ed
 
 Image by [Romit Roy Choudhury @ UIUC](https://croy.web.engr.illinois.edu/)
 
+![](https://github.com/TaKeTube/ECE-438/blob/main/mp2/TCP.jpg?raw=true)
